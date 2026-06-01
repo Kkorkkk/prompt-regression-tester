@@ -23,6 +23,9 @@ test("rejects missing CLI flag values and adapter failures", () => {
   assert.throws(() => parseCliArgs(["suite.json", "--adapter-command"]), /requires a value/);
   assert.throws(() => parseCliArgs(["suite.json", "--html"]), /requires a value/);
   assert.throws(() => parseCliArgs(["--adapter-command", "cat"]), /Usage:/);
+  assert.throws(() => runSuite({ cases: [] }), /at least one case/);
+  assert.equal(runSuite({ cases: [{ id: "empty", output: "ok" }] })[0].ok, false);
+  assert.equal(runSuite({ cases: [{ id: "bad-regex", output: "ok", expect: [{ regex: "[" }] }] })[0].ok, false);
   assert.throws(
     () => runSuiteWithAdapter({ cases: [{ id: "bad", prompt: "x", expect: [{ contains: "x" }] }] }, "node -e \"process.exit(7)\""),
     /exit 7/

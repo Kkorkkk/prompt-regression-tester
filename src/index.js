@@ -4,11 +4,25 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export function runSuite(suite) {
-  return (suite.cases || []).map((item) => {
+  const cases = suite.cases || [];
+  if (!Array.isArray(cases) || cases.length === 0) {
+    throw new Error("Suite must include at least one case.");
+  }
+  return cases.map((item) => {
     const output = item.output ?? suite.fixtures?.[item.id] ?? "";
-    const checks = (item.expect || []).map((expectation) => {
+    const expectations = item.expect || [];
+    if (!Array.isArray(expectations) || expectations.length === 0) {
+      return { id: item.id, prompt: item.prompt, output, checks: [{ ok: false, label: "missing expectations" }], ok: false };
+    }
+    const checks = expectations.map((expectation) => {
       if (expectation.contains) return { ok: output.includes(expectation.contains), label: `contains ${expectation.contains}` };
-      if (expectation.regex) return { ok: new RegExp(expectation.regex).test(output), label: `matches /${expectation.regex}/` };
+      if (expectation.regex) {
+        try {
+          return { ok: new RegExp(expectation.regex).test(output), label: `matches /${expectation.regex}/` };
+        } catch {
+          return { ok: false, label: `invalid regex /${expectation.regex}/` };
+        }
+      }
       if (expectation.notContains) return { ok: !output.includes(expectation.notContains), label: `omits ${expectation.notContains}` };
       return { ok: false, label: "unknown expectation" };
     });
@@ -57,7 +71,9 @@ function runAdapter(command, args, input) {
   const result = spawnSync(command, args, {
     input,
     encoding: "utf8",
-    stdio: ["pipe", "pipe", "pipe"]
+    stdio: ["pipe", "pipe", "pipe"],
+    timeout: 30_000,
+    maxBuffer: 1_000_000
   });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`Adapter command failed with exit ${result.status}: ${result.stderr || result.stdout || ""}`.trim());
