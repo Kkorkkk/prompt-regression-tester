@@ -1,7 +1,7 @@
 {
   "name": "prompt-regression-tester",
   "version": "0.1.0",
-  "description": "Run fixture-based regression checks for prompts before shipping changes.",
+  "description": "Run fixture or adapter based regression checks for prompts before shipping changes.",
   "type": "module",
   "bin": {
     "prompt-regression-tester": "./src/index.js"
@@ -13,8 +13,9 @@
   "keywords": [
     "cli",
     "developer-tools",
-    "ai",
-    "github"
+    "prompts",
+    "testing",
+    "regression"
   ],
   "license": "MIT",
   "engines": {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 
 export function runSuite(suite) {
   return (suite.cases || []).map((item) => {
@@ -14,6 +15,19 @@ export function runSuite(suite) {
   });
 }
 
+export function runSuiteWithAdapter(suite, command) {
+  const cases = (suite.cases || []).map((item) => ({
+    ...item,
+    output: execSync(command, {
+      input: item.prompt || "",
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: true
+    }).trimEnd()
+  }));
+  return runSuite({ ...suite, cases });
+}
+
 export function renderText(results) {
   const passed = results.filter((result) => result.ok).length;
   return [
@@ -23,7 +37,7 @@ export function renderText(results) {
 }
 
 export function renderHtml(results) {
-  const rows = results.map((result) => `<tr><td>${result.ok ? "PASS" : "FAIL"}</td><td>${result.id}</td><td><pre>${escapeHtml(result.output)}</pre></td></tr>`).join("");
+  const rows = results.map((result) => `<tr><td>${result.ok ? "PASS" : "FAIL"}</td><td>${escapeHtml(result.id)}</td><td><pre>${escapeHtml(result.output)}</pre></td></tr>`).join("");
   return `<!doctype html><meta charset="utf-8"><title>Prompt report</title><style>body{font-family:system-ui;margin:32px}td{border-top:1px solid #ddd;padding:8px}pre{white-space:pre-wrap}</style><h1>Prompt Regression Report</h1><table>${rows}</table>`;
 }
 
@@ -37,9 +51,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("Usage: prompt-regression-tester suite.json [--html report.html]");
     process.exit(1);
   }
-  const results = runSuite(JSON.parse(readFileSync(file, "utf8")));
-  const htmlIndex = process.argv.indexOf("--html");
-  if (htmlIndex > -1) writeFileSync(process.argv[htmlIndex + 1] || "prompt-report.html", renderHtml(results));
-  console.log(renderText(results));
-  process.exit(results.every((result) => result.ok) ? 0 : 2);
+  try {
+    const suite = JSON.parse(readFileSync(file, "utf8"));
+    const adapterIndex = process.argv.indexOf("--adapter-command");
+    const results = adapterIndex > -1 ? runSuiteWithAdapter(suite, process.argv[adapterIndex + 1]) : runSuite(suite);
+    const htmlIndex = process.argv.indexOf("--html");
+    if (htmlIndex > -1) writeFileSync(process.argv[htmlIndex + 1] || "prompt-report.html", renderHtml(results));
+    console.log(renderText(results));
+    process.exit(results.every((result) => result.ok) ? 0 : 2);
+  } catch (error) {
+    console.error(`prompt-regression-tester: ${error.message}`);
+    process.exit(2);
+  }
 }
