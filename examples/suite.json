@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {
+      "id": "supportive-summary",
+      "prompt": "Summarize a bug report in a calm tone.",
+      "output": "The report describes a repeatable login failure and suggests collecting browser logs before changing code.",
+      "expect": [
+        { "contains": "login failure" },
+        { "notContains": "panic" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "prompt-regression-tester",
+  "version": "0.1.0",
+  "description": "Run fixture-based regression checks for prompts before shipping changes.",
+  "type": "module",
+  "bin": {
+    "prompt-regression-tester": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "cli",
+    "developer-tools",
+    "ai",
+    "github"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "Kkorkkk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kkorkkk/prompt-regression-tester.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kkorkkk/prompt-regression-tester/issues"
+  },
+  "homepage": "https://github.com/Kkorkkk/prompt-regression-tester#readme",
+  "files": [
+    "src",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ]
+}
