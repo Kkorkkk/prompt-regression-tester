@@ -16,4 +16,11 @@ The default mode uses deterministic fixture outputs, so CI can run without model
 
 ## Limits
 
-The adapter command is intentionally user supplied and runs in your shell. Only point it at commands you trust.
+The adapter command is intentionally user supplied and now runs without a shell. Only point it at commands you trust, and pass the command plus arguments as one quoted value.
+
+Example output:
+
+```txt
+Prompt regression: 2/2 passing
+PASS greeting: ok contains hello
+```

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
 export function runSuite(suite) {
   return (suite.cases || []).map((item) => {
@@ -16,16 +17,51 @@ export function runSuite(suite) {
 }
 
 export function runSuiteWithAdapter(suite, command) {
+  const [cmd, ...args] = splitCommand(command);
+  if (!cmd) throw new Error("--adapter-command requires a command.");
   const cases = (suite.cases || []).map((item) => ({
     ...item,
-    output: execSync(command, {
-      input: item.prompt || "",
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: true
-    }).trimEnd()
+    output: runAdapter(cmd, args, item.prompt || "")
   }));
   return runSuite({ ...suite, cases });
+}
+
+function splitCommand(command) {
+  if (!command || typeof command !== "string") return [];
+  const tokens = [];
+  let current = "";
+  let quote = null;
+  for (let index = 0; index < command.length; index++) {
+    const char = command[index];
+    if (quote) {
+      if (char === "\\") current += command[++index] || "";
+      else if (char === quote) quote = null;
+      else current += char;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (/\s/.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = "";
+      }
+    } else {
+      current += char;
+    }
+  }
+  if (quote) throw new Error("Unclosed quote in command.");
+  if (current) tokens.push(current);
+  return tokens;
+}
+
+function runAdapter(command, args, input) {
+  const result = spawnSync(command, args, {
+    input,
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`Adapter command failed with exit ${result.status}: ${result.stderr || result.stdout || ""}`.trim());
+  return result.stdout.trimEnd();
 }
 
 export function renderText(results) {
@@ -45,18 +81,38 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const file = process.argv[2];
-  if (!file) {
-    console.error("Usage: prompt-regression-tester suite.json [--html report.html]");
-    process.exit(1);
+function flagValue(args, flag) {
+  const index = args.indexOf(flag);
+  if (index === -1) return null;
+  const value = args[index + 1];
+  if (!value || value.startsWith("--")) throw new Error(`${flag} requires a value.`);
+  return value;
+}
+
+export function parseCliArgs(args) {
+  let file = null;
+  for (let index = 0; index < args.length; index++) {
+    if (args[index] === "--adapter-command" || args[index] === "--html") {
+      index++;
+    } else if (!args[index].startsWith("--")) {
+      file = args[index];
+      break;
+    }
   }
+  if (!file) throw new Error("Usage: prompt-regression-tester suite.json [--html report.html] [--adapter-command command]");
+  return {
+    file,
+    adapterCommand: flagValue(args, "--adapter-command"),
+    htmlPath: flagValue(args, "--html")
+  };
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
+    const { file, adapterCommand, htmlPath } = parseCliArgs(process.argv.slice(2));
     const suite = JSON.parse(readFileSync(file, "utf8"));
-    const adapterIndex = process.argv.indexOf("--adapter-command");
-    const results = adapterIndex > -1 ? runSuiteWithAdapter(suite, process.argv[adapterIndex + 1]) : runSuite(suite);
-    const htmlIndex = process.argv.indexOf("--html");
-    if (htmlIndex > -1) writeFileSync(process.argv[htmlIndex + 1] || "prompt-report.html", renderHtml(results));
+    const results = adapterCommand ? runSuiteWithAdapter(suite, adapterCommand) : runSuite(suite);
+    if (htmlPath) writeFileSync(htmlPath, renderHtml(results));
     console.log(renderText(results));
     process.exit(results.every((result) => result.ok) ? 0 : 2);
   } catch (error) {
