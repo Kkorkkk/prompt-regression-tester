@@ -2,6 +2,12 @@
 
 [![CI](https://github.com/Kkorkkk/prompt-regression-tester/actions/workflows/ci.yml/badge.svg)](https://github.com/Kkorkkk/prompt-regression-tester/actions/workflows/ci.yml)
 
+## Overview / 项目说明
+
+English: Prompt Regression Tester helps treat prompts like testable project assets. It runs deterministic fixture checks by default, can call a trusted local adapter command, and reports whether each prompt output still matches the expectations you care about.
+
+中文：Prompt Regression Tester 用来把提示词当作可以测试的项目资产管理。默认模式使用确定性的 fixture 检查，也可以调用你信任的本地适配器命令，并报告每个提示词输出是否仍符合关键预期。
+
 Treat prompts like code by testing expected output traits.
 
 ## Install
